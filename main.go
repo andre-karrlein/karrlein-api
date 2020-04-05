@@ -71,7 +71,7 @@ func loadExperience() []experience {
 	host := os.Getenv("DBHOST")
 	dbname := os.Getenv("DBNAME")
 
-	connection := user + ":" + password + "@(" + host + ":3306/" + dbname + "?parseTime=true&charset=utf8"
+	connection := user + ":" + password + "@(" + host + ":3306)/" + dbname + "?parseTime=true&charset=utf8"
 
 	db, err := sql.Open("mysql", connection)
 	if err != nil {
