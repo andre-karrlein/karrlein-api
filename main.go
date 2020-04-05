@@ -1,21 +1,24 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 )
 
-type Education struct {
+type education struct {
 	University string `json:"university"`
 	City       string `json:"city"`
 	Field      string `json:"field"`
 	Degree     string `json:"degree"`
 }
 
-type Experience struct {
+type experience struct {
 	Role      string `json:"role"`
 	Company   string `json:"company"`
 	City      string `json:"city"`
@@ -23,30 +26,36 @@ type Experience struct {
 }
 
 func getExperience(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 
-	experienceJson, _ := json.Marshal(loadExperience())
+	experienceJSON, err := json.Marshal(loadExperience())
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	w.Write(experienceJson)
+	w.Write(experienceJSON)
 }
 func getEducation(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(http.StatusOK)
 
-	educationJson, _ := json.Marshal(loadEducation())
+	educationJSON, err := json.Marshal(loadEducation())
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	w.Write(educationJson)
+	w.Write(educationJSON)
 }
 func notImplemented(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
-func loadEducation() Education {
-	education := Education{
+func loadEducation() education {
+	education := education{
 		"University of applied science",
 		"Leipzig, Germany",
 		"Information technology",
@@ -56,32 +65,44 @@ func loadEducation() Education {
 	return education
 }
 
-func loadExperience() []Experience {
-	experience := Experience{
-		"Software Developer",
-		"FLYERALARM",
-		"Wuerzburg",
-		"August 2016 - October 2017",
+func loadExperience() []experience {
+	user := os.Getenv("DBUSERNAME")
+	password := os.Getenv("DBPASSWORD")
+	host := os.Getenv("DBHOST")
+	dbname := os.Getenv("DBNAME")
+
+	connection := user + ":" + password + "@(" + host + ":3306/" + dbname + "?parseTime=true&charset=utf8"
+
+	db, err := sql.Open("mysql", connection)
+	if err != nil {
+		log.Fatal(err)
 	}
-	experience2 := Experience{
-		"Lead Developer",
-		"FLYERALARM",
-		"Wuerzburg",
-		"October 2017 - June 2019",
-	}
-	experience3 := Experience{
-		"Senior Software Engineer",
-		"FLYERALARM",
-		"Wuerzburg",
-		"June 2019 - today",
-	}
-	resume := []Experience{
-		experience,
-		experience2,
-		experience3,
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	return resume
+	rows, err := db.Query(`SELECT role, company, city, timeframe FROM resume`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var expirences []experience
+	for rows.Next() {
+		var e experience
+		err = rows.Scan(&e.Role, &e.Company, &e.City, &e.Timeframe)
+		if err != nil {
+			log.Fatal(err)
+		}
+		expirences = append(expirences, e)
+	}
+	err = rows.Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return expirences
 }
 
 func main() {
