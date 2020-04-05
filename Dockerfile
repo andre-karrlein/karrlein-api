@@ -4,6 +4,7 @@ COPY main.go /go/build/main.go
 WORKDIR /go/build/
 
 RUN go get github.com/gorilla/mux
+RUN go get github.com/go-sql-driver/mysql
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api .
 
