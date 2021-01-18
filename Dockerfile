@@ -1,9 +1,12 @@
 FROM golang as builder
 
 COPY main.go /go/build/main.go
+COPY go.mod /go/build/go.mod
+COPY go.sum /go/build/go.sum
+
 WORKDIR /go/build/
 
-RUN go install
+RUN go mod download
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api .
 
