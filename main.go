@@ -72,7 +72,7 @@ func loadExperience() []experience {
 
 	var expirences []experience
 
-	iter := client.Collection("resume").Doc("JrEvSIoWiSgTgXQRIC6I").Collection("experience").Documents(ctx)
+	iter := client.Collection("resume").Doc("JrEvSIoWiSgTgXQRIC6I").Collection("experience").OrderBy("order", firestore.Asc).Documents(ctx)
 	for {
 		doc, err := iter.Next()
 		if err == iterator.Done {
