@@ -1,14 +1,14 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"encoding/json"
 	"log"
 	"net/http"
-	"os"
 
-	_ "github.com/go-sql-driver/mysql"
+	"cloud.google.com/go/firestore"
 	"github.com/gorilla/mux"
+	"google.golang.org/api/iterator"
 )
 
 type education struct {
@@ -66,40 +66,26 @@ func loadEducation() education {
 }
 
 func loadExperience() []experience {
-	user := os.Getenv("DBUSERNAME")
-	password := os.Getenv("DBPASSWORD")
-	host := os.Getenv("DBHOST")
-	dbname := os.Getenv("DBNAME")
-
-	connection := user + ":" + password + "@(" + host + ":3306)/" + dbname + "?parseTime=true&charset=utf8"
-
-	db, err := sql.Open("mysql", connection)
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = db.Ping()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	rows, err := db.Query(`SELECT role, company, city, timeframe FROM resume`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
+	ctx := context.Background()
+	client := createClient(ctx)
+	defer client.Close()
 
 	var expirences []experience
-	for rows.Next() {
-		var e experience
-		err = rows.Scan(&e.Role, &e.Company, &e.City, &e.Timeframe)
-		if err != nil {
-			log.Fatal(err)
+
+	iter := client.Collection("resume").Doc("JrEvSIoWiSgTgXQRIC6I").Collection("experience").Documents(ctx)
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
 		}
+		if err != nil {
+			log.Fatalf("Failed to iterate: %v", err)
+		}
+
+		var e experience
+		doc.DataTo(&e)
+
 		expirences = append(expirences, e)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
 	}
 
 	return expirences
@@ -114,4 +100,16 @@ func main() {
 	api.HandleFunc("", notImplemented)
 
 	log.Fatal(http.ListenAndServe(":8080", r))
+}
+
+func createClient(ctx context.Context) *firestore.Client {
+	// Sets your Google Cloud Platform project ID.
+	projectID := "karrlein" // os.Getenv("PROJECT_ID")
+
+	client, err := firestore.NewClient(ctx, projectID)
+	if err != nil {
+		log.Fatalf("Failed to create client: %v", err)
+	}
+
+	return client
 }
